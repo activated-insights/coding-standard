@@ -85,6 +85,7 @@ class UninitializedNullableClassPropertySniff implements Sniff
             $this->checkIfVariableInitializedInConstructor(
                 $phpcsFile,
                 $closingParenthesisPointer,
+                $endOfFunctionPointer,
                 $stackPtr,
                 $propertyName
             );
@@ -187,10 +188,10 @@ class UninitializedNullableClassPropertySniff implements Sniff
     private function checkIfVariableInitializedInConstructor(
         File $phpcsFile,
         int $constructorBodyPointer,
+        int $endOfConstructorPointer,
         int $propertyPointer,
         string $propertyName
     ): void {
-        $endOfConstructorPointer = $phpcsFile->findEndOfStatement($constructorBodyPointer);
         $tokens                  = $phpcsFile->getTokens();
         $lastVariablePointer     = $constructorBodyPointer;
         $assignmentFound         = false;
