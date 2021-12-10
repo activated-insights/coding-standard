@@ -57,9 +57,9 @@ class MissingTestAnnotationOnTestFunctionSniff implements Sniff
     /**
      * Whether the specified function name looks like a test function according to our format.
      */
-    private function looksLikeTestFunction(string $namespace, string $functionName): bool
+    private function looksLikeTestFunction(?string $namespace, string $functionName): bool
     {
-        if (substr($namespace, 0, 6) !== 'Tests\\') {
+        if ($namespace === null || substr($namespace, 0, 6) !== 'Tests\\') {
             // Function doesn't belong to a class in the Tests\ namespace.
             return false;
         }
