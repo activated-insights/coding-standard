@@ -17,20 +17,17 @@ class UninitializedNullableClassPropertySniff implements Sniff
      */
     private const NAME = 'UninitializedNullableClassProperty';
 
-    /**
-     * @var bool
-     */
-    private $checkedForConstructor;
+    private bool $checkedForConstructor;
 
-    /**
-     * @var int|null
-     */
-    private $constructorPointer;
+    private ?int $constructorPointer;
+
+    private ?int $endOfConstructorParametersPointer;
 
     public function __construct()
     {
-        $this->constructorPointer    = null;
-        $this->checkedForConstructor = false;
+        $this->constructorPointer                = null;
+        $this->endOfConstructorParametersPointer = null;
+        $this->checkedForConstructor             = false;
     }
 
     public function register(): array
@@ -44,7 +41,8 @@ class UninitializedNullableClassPropertySniff implements Sniff
     {
         // Find the pointer to the constructor if we haven't done so already.
         if (!$this->checkedForConstructor) {
-            $this->constructorPointer = $this->findConstructorPointer($phpcsFile);
+            $this->constructorPointer                = $this->findConstructorPointer($phpcsFile);
+            $this->endOfConstructorParametersPointer = $this->findEndOfConstructorParametersPointer($phpcsFile);
         }
 
         $tokens = $phpcsFile->getTokens();
@@ -61,6 +59,11 @@ class UninitializedNullableClassPropertySniff implements Sniff
 
         // Check to see if the variable is initialized on declaration.
         if ($this->isNullableVariableInitializedInDeclaration($phpcsFile, $stackPtr, $endOfDeclarationPointer)) {
+            return;
+        }
+
+        // Check to see if the variable is implicitly assigned via property promotion.
+        if ($this->isAssignedViaPropertyPromotion($stackPtr)) {
             return;
         }
 
@@ -134,8 +137,8 @@ class UninitializedNullableClassPropertySniff implements Sniff
      */
     private function isNullableVariableInitializedInDeclaration(
         File $phpcsFile,
-        int $stackPtr,
-        int $endOfDeclarationPointer
+        int  $stackPtr,
+        int  $endOfDeclarationPointer
     ): bool {
         $assignmentOperatorPtr = $phpcsFile->findNext([T_EQUAL], $stackPtr + 1, $endOfDeclarationPointer);
         if ($assignmentOperatorPtr === false) {
@@ -186,15 +189,15 @@ class UninitializedNullableClassPropertySniff implements Sniff
      * it isn't.
      */
     private function checkIfVariableInitializedInConstructor(
-        File $phpcsFile,
-        int $constructorBodyPointer,
-        int $endOfConstructorPointer,
-        int $propertyPointer,
+        File   $phpcsFile,
+        int    $constructorBodyPointer,
+        int    $endOfConstructorPointer,
+        int    $propertyPointer,
         string $propertyName
     ): void {
-        $tokens                  = $phpcsFile->getTokens();
-        $lastVariablePointer     = $constructorBodyPointer;
-        $assignmentFound         = false;
+        $tokens              = $phpcsFile->getTokens();
+        $lastVariablePointer = $constructorBodyPointer;
+        $assignmentFound     = false;
         do {
             // Find the next pointer for a variable within the constructor body.
             $variablePointer     = $phpcsFile->findNext(
@@ -245,5 +248,22 @@ class UninitializedNullableClassPropertySniff implements Sniff
         if (!$assignmentFound) {
             $phpcsFile->addError('Uninitialized nullable class property.', $propertyPointer, self::NAME);
         }
+    }
+
+    private function findEndOfConstructorParametersPointer(File $phpcsFile): ?int
+    {
+        if ($this->constructorPointer === null) {
+            return null;
+        }
+
+        return $phpcsFile->findNext(T_OPEN_CURLY_BRACKET, $this->constructorPointer);
+    }
+
+    private function isAssignedViaPropertyPromotion(int $stackPtr): bool
+    {
+        return $this->constructorPointer !== null &&
+               $this->endOfConstructorParametersPointer !== null &&
+               $stackPtr > $this->constructorPointer &&
+               $stackPtr < $this->endOfConstructorParametersPointer;
     }
 }
