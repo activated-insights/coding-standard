@@ -17,17 +17,20 @@ class UninitializedNullableClassPropertySniff implements Sniff
      */
     private const NAME = 'UninitializedNullableClassProperty';
 
-    private bool $checkedForConstructor;
+    private bool    $checkedForConstructor;
 
-    private ?int $constructorPointer;
+    private ?int    $constructorPointer;
 
-    private ?int $endOfConstructorParametersPointer;
+    private ?int    $endOfConstructorParametersPointer;
+
+    private ?string $fileName;
 
     public function __construct()
     {
         $this->constructorPointer                = null;
         $this->endOfConstructorParametersPointer = null;
         $this->checkedForConstructor             = false;
+        $this->fileName                          = null;
     }
 
     public function register(): array
@@ -39,6 +42,17 @@ class UninitializedNullableClassPropertySniff implements Sniff
 
     public function process(File $phpcsFile, $stackPtr)
     {
+        $fileName = $phpcsFile->getFilename();
+        if ($this->fileName === null) {
+            $this->fileName = $fileName;
+        }
+
+        // Re-check the constructor position when we move on to a different file.
+        if ($this->fileName !== $fileName) {
+            $this->checkedForConstructor = false;
+            $this->fileName              = $fileName;
+        }
+
         // Find the pointer to the constructor if we haven't done so already.
         if (!$this->checkedForConstructor) {
             $this->constructorPointer                = $this->findConstructorPointer($phpcsFile);
