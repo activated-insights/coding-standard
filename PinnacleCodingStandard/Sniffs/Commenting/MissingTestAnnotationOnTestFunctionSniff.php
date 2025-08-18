@@ -37,7 +37,7 @@ class MissingTestAnnotationOnTestFunctionSniff implements Sniff
 
         $docComment = DocCommentHelper::getDocComment($phpcsFile, $stackPtr);
 
-        if ($docComment !== null && preg_match('/\s+@test$/m', $docComment)) {
+        if ($docComment !== null && preg_match('/#\[Test\]$/m', $docComment)) {
             // Found @test annotation, no need to add error.
             return;
         }
@@ -45,7 +45,7 @@ class MissingTestAnnotationOnTestFunctionSniff implements Sniff
         // Found a test function without a @test annotation, add an error.
         $phpcsFile->addError(
             sprintf(
-                '%s %s() looks like a test but is missing the @test annotation.',
+                '%s %s() looks like a test but is missing the #[Test] annotation.',
                 FunctionHelper::getTypeLabel($phpcsFile, $stackPtr),
                 FunctionHelper::getFullyQualifiedName($phpcsFile, $stackPtr)
             ),
