@@ -4,19 +4,19 @@ namespace PinnacleCodingStandard\Sniffs\Commenting;
 
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
-use SlevomatCodingStandard\Helpers\DocCommentHelper;
+use SlevomatCodingStandard\Helpers\AttributeHelper;
 use SlevomatCodingStandard\Helpers\FunctionHelper;
 use SlevomatCodingStandard\Helpers\NamespaceHelper;
 
 /**
- * A sniff to check for test functions missing a @test annotation.
+ * A sniff to check for test functions missing a #[Test] attribute.
  */
-class MissingTestAnnotationOnTestFunctionSniff implements Sniff
+class MissingTestAttributeOnTestFunctionSniff implements Sniff
 {
     /**
      * The name of the sniff.
      */
-    private const NAME = 'MissingTestAnnotationOnTestFunction';
+    private const NAME = 'MissingTestAttributeOnTestFunction';
 
     public function register(): array
     {
@@ -31,21 +31,25 @@ class MissingTestAnnotationOnTestFunctionSniff implements Sniff
         $functionName = FunctionHelper::getName($phpcsFile, $stackPtr);
 
         if (!$this->looksLikeTestFunction($namespace, $functionName)) {
-            // Not a test function, don't bother checking for annotation.
+            // Not a test function, don't bother checking for attribute.
             return;
         }
 
-        $docComment = DocCommentHelper::getDocComment($phpcsFile, $stackPtr);
-
-        if ($docComment !== null && preg_match('/#\[Test\]$/m', $docComment)) {
-            // Found @test annotation, no need to add error.
+        // Check for the #[Test] attribute attached to the function.
+        if (
+            AttributeHelper::hasAttribute($phpcsFile, $stackPtr, 'Test')
+            || AttributeHelper::hasAttribute($phpcsFile, $stackPtr, 'PHPUnit\\Framework\\Attributes\\Test')
+            || AttributeHelper::hasAttribute($phpcsFile, $stackPtr, '\\PHPUnit\\Framework\\Attributes\\Test')
+        ) {
+            // Found the #[Test] attribute, no need to add an error.
             return;
         }
 
-        // Found a test function without a @test annotation, add an error.
+
+        // Found a test function without a #[Test] attribute, add an error.
         $phpcsFile->addError(
             sprintf(
-                '%s %s() looks like a test but is missing the #[Test] annotation.',
+                '%s %s() looks like a test but is missing the #[Test] attribute.',
                 FunctionHelper::getTypeLabel($phpcsFile, $stackPtr),
                 FunctionHelper::getFullyQualifiedName($phpcsFile, $stackPtr)
             ),
