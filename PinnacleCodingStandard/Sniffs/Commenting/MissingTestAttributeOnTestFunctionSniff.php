@@ -40,8 +40,7 @@ class MissingTestAttributeOnTestFunctionSniff implements Sniff
         $tokens        = $phpcsFile->getTokens();
         $previousToken = TokenHelper::findPrevious($phpcsFile, [T_ATTRIBUTE], $stackPtr - 1);
 
-        if ($previousToken !== null && $tokens[$previousToken]['code'] === T_ATTRIBUTE) {
-
+        while ($previousToken !== null && $tokens[$previousToken]['code'] === T_ATTRIBUTE) {
             $attributeNames = array_map(
                 static fn (Attribute $name): string => $name->getFullyQualifiedName(),
                 AttributeHelper::getAttributes($phpcsFile, $previousToken),
@@ -54,6 +53,8 @@ class MissingTestAttributeOnTestFunctionSniff implements Sniff
             ) {
                 return;
             }
+
+            $previousToken = TokenHelper::findFirstNonWhitespaceOnPreviousLine($phpcsFile, $previousToken);
         }
 
         // Found a test function without a #[Test] attribute, add an error.
