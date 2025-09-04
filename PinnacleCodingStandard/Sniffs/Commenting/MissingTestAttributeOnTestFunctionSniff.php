@@ -4,9 +4,11 @@ namespace PinnacleCodingStandard\Sniffs\Commenting;
 
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
+use SlevomatCodingStandard\Helpers\Attribute;
 use SlevomatCodingStandard\Helpers\AttributeHelper;
 use SlevomatCodingStandard\Helpers\FunctionHelper;
 use SlevomatCodingStandard\Helpers\NamespaceHelper;
+use SlevomatCodingStandard\Helpers\TokenHelper;
 
 /**
  * A sniff to check for test functions missing a #[Test] attribute.
@@ -35,16 +37,25 @@ class MissingTestAttributeOnTestFunctionSniff implements Sniff
             return;
         }
 
-        // Check for the #[Test] attribute attached to the function.
-        if (
-            AttributeHelper::hasAttribute($phpcsFile, $stackPtr, 'Test')
-            || AttributeHelper::hasAttribute($phpcsFile, $stackPtr, 'PHPUnit\\Framework\\Attributes\\Test')
-            || AttributeHelper::hasAttribute($phpcsFile, $stackPtr, '\\PHPUnit\\Framework\\Attributes\\Test')
-        ) {
-            // Found the #[Test] attribute, no need to add an error.
-            return;
-        }
+        $tokens        = $phpcsFile->getTokens();
+        $previousToken = TokenHelper::findPrevious($phpcsFile, [T_ATTRIBUTE], $stackPtr - 1);
 
+        while ($previousToken !== null && $tokens[$previousToken]['code'] === T_ATTRIBUTE) {
+            $attributeNames = array_map(
+                static fn (Attribute $name): string => $name->getFullyQualifiedName(),
+                AttributeHelper::getAttributes($phpcsFile, $previousToken),
+            );
+
+            if (
+                in_array('Test', $attributeNames, true) ||
+                in_array('PHPUnit\\Framework\\Attributes\\Test', $attributeNames, true) ||
+                in_array('\\PHPUnit\\Framework\\Attributes\\Test', $attributeNames, true)
+            ) {
+                return;
+            }
+
+            $previousToken = TokenHelper::findFirstNonWhitespaceOnPreviousLine($phpcsFile, $previousToken);
+        }
 
         // Found a test function without a #[Test] attribute, add an error.
         $phpcsFile->addError(
